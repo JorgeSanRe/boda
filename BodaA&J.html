@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Acceso - Nuestra Boda</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        .gold-gradient {
+            background: linear-gradient(135deg, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fbf5b7 75%, #aa771c 100%);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes zoomIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .animate-zoom-in { animation: zoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-shake { animation: shake 0.2s ease-in-out 2; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
+
+    <header class="bg-white shadow-md border-b-2 border-amber-600 p-6 text-center">
+        <h1 class="text-3xl font-serif text-amber-800 tracking-wide font-bold">RECEPCIÓN DE NUESTRA BODA</h1>
+        <p class="text-sm text-gray-500 uppercase tracking-widest mt-1">Control de Acceso Digital (Nube)</p>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-4 md:p-8">
+        <div class="flex justify-center space-x-2 mb-8 bg-white p-2 rounded-xl shadow-sm border border-gray-200">
+            <button onclick="switchTab('lista')" id="btn-lista" class="tab-btn px-4 py-2 rounded-lg font-medium bg-amber-700 text-white transition cursor-pointer">📋 Lista e Invitaciones</button>
+            <button onclick="switchTab('escaner')" id="btn-escaner" class="tab-btn px-4 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition cursor-pointer">📷 Escáner QR</button>
+        </div>
+
+        <section id="tab-lista" class="tab-content block animate-fade-in">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">✨ Añadir Nuevo Invitado</h2>
+                <form id="invitado-form" class="grid grid-cols-1 md:grid-cols-4 gap-4" onsubmit="agregarInvitado(event)">
+                    <input type="text" id="inv-nombre" placeholder="Nombre completo" required class="border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-amber-600 text-gray-900 bg-white">
+                    <input type="number" id="inv-pases" placeholder="Número de pases" min="1" required class="border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-amber-600 text-gray-900 bg-white">
+                    <input type="text" id="inv-mesa" placeholder="Mesa (Ej: Mesa 5)" required class="border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-amber-600 text-gray-900 bg-white">
+                    <button type="submit" id="btn-submit-invitado" class="bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-xl p-3 transition shadow-md cursor-pointer block w-full">Agregar a la Lista</button>
+                </form>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <h2 class="text-xl font-bold text-gray-800">Invitados Registrados</h2>
+                    <span id="contador-asistencia" class="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full">Cargando lista...</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-600 text-sm uppercase tracking-wider">
+                                <th class="p-4">ID</th>
+                                <th class="p-4">Invitado</th>
+                                <th class="p-4 text-center">Pases</th>
+                                <th class="p-4">Mesa</th>
+                                <th class="p-4">Estado / Hora</th>
+                                <th class="p-4 text-center">Acciones / Pase</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-invitados" class="divide-y divide-gray-100 text-gray-700">
+                            <tr><td colspan="6" class="p-4 text-center text-gray-400">Conectando con la base de datos en tiempo real...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="tab-escaner" class="tab-content hidden animate-fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">📷 Escáner de Cámara</h2>
+                    
+                    <div id="reader" class="mx-auto rounded-xl overflow-hidden border border-gray-300 max-w-md bg-black" style="min-height: 300px; position: relative;"></div>
+                    
+                    <div class="mt-4 flex justify-center space-x-2">
+                        <button onclick="encenderCamara()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-xl shadow transition cursor-pointer">Iniciar Cámara</button>
+                        <button onclick="apagarCamara()" class="bg-gray-500 hover:bg-gray-600 text-white font-medium px-4 py-2 rounded-xl shadow transition cursor-pointer">Apagar</button>
+                    </div>
+                    
+                    <div class="mt-6 pt-6 border-t border-gray-100 bg-gray-50 rounded-xl p-4">
+                        <p class="text-xs text-gray-500 mb-2 font-bold uppercase tracking-wider">¿Validación Manual?</p>
+                        <div class="flex max-w-xs mx-auto gap-2">
+                            <input type="text" id="codigo-manual" placeholder="Ingresa el ID manual" class="border border-gray-300 rounded-lg p-2 text-sm w-full bg-white">
+                            <button onclick="procesarEntrada(document.getElementById('codigo-manual').value)" class="bg-gray-800 text-white px-3 py-2 text-sm rounded-lg font-bold hover:bg-black transition cursor-pointer">Validar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between min-h-[400px]">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 text-center">🎫 Resultado del Acceso</h2>
+                    <div id="resultado-pantalla" class="flex-grow flex flex-col items-center justify-center text-center p-4 rounded-xl border-2 border-dashed border-gray-200 transition-all duration-300">
+                        <div class="text-gray-300 mb-2 text-6xl">📭</div>
+                        <p class="text-gray-400 font-medium">Esperando un código QR válido...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="modal-pase" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 relative shadow-2xl border border-amber-100 animate-zoom-in">
+            <button onclick="cerrarPase()" class="absolute top-4 right-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full w-8 h-8 flex items-center justify-center font-bold text-lg transition cursor-pointer">&times;</button>
+            
+            <div id="area-impresion-pase" class="border-4 border-amber-600/30 rounded-2xl p-4 text-center relative overflow-hidden bg-stone-50">
+                <h3 class="font-serif text-xl font-bold text-amber-900 tracking-wide">Pase de Entrada</h3>
+                <div class="w-12 h-[1px] bg-amber-600 mx-auto my-2"></div>
+                <p class="text-xs tracking-widest text-gray-400 uppercase font-bold">Nuestra Boda</p>
+                <p id="pase-nombre" class="text-lg font-bold text-gray-800 mt-4 truncate">Nombre</p>
+                
+                <div class="bg-white p-3 inline-block rounded-xl my-4 shadow-sm border border-stone-200">
+                    <div id="qrcode" class="flex justify-center items-center min-w-[160px] min-h-[160px]"></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-sm border-t border-stone-200 pt-3 mt-2">
+                    <div class="text-center border-r border-stone-200">
+                        <p class="text-xs text-stone-400 uppercase font-bold">Pases</p>
+                        <p id="pase-pases" class="text-base font-bold text-stone-800">0</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xs text-stone-400 uppercase font-bold">Mesa</p>
+                        <p id="pase-mesa" class="text-base font-bold text-stone-800">0</p>
+                    </div>
+                </div>
+                <p id="pase-id" class="text-[10px] text-stone-400 font-mono mt-4">ID: 0000</p>
+            </div>
+            <button onclick="window.print()" class="w-full mt-4 bg-amber-800 hover:bg-amber-950 text-white font-bold p-3 rounded-xl shadow transition cursor-pointer">🖨️ Imprimir / Guardar PDF</button>
+        </div>
+    </div>
+
+    <script>
+        // 🔴 REEMPLAZA ESTA URL CON LA URL DE TU REALTIME DATABASE DE FIREBASE
+        const FIREBASE_URL = "https://boda-ayj-default-rtdb.firebaseio.com/invitados";
+
+        let invitados = [];
+        let html5QrcodeScanner = null;
+        let procesandoAcceso = false; // Candado para mitigar ráfagas del QR
+
+        function conectarFirebase() {
+            fetch(`${FIREBASE_URL}.json`)
+            .then(res => res.json())
+            .then(data => {
+                const listaTemporal = [];
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        if(data[key] && data[key].id) {
+                            listaTemporal.push({ firebaseKey: key, ...data[key] });
+                        }
+                    });
+                }
+                
+                // Solo renderizar si el string JSON cambió (evita parpadeos molestos en UI)
+                if (JSON.stringify(invitados) !== JSON.stringify(listaTemporal)) {
+                    invitados = listaTemporal;
+                    renderizarTabla();
+                    actualizarContadores();
+                }
+            }).catch(err => console.error("Error cargando base de datos:", err));
+        }
+
+        // Monitorear en tiempo real cada 3 segundos
+        setInterval(conectarFirebase, 3000);
+        window.onload = conectarFirebase;
+
+        function renderizarTabla() {
+            const tbody = document.getElementById('tabla-invitados');
+            if (invitados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">No hay invitados registrados aún.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = '';
+
+            invitados.forEach(inv => {
+                const esIngresado = inv.estado === 'Ingresado';
+                const badgeClass = esIngresado ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-700';
+                const textoEstado = esIngresado ? `Ingresado (${inv.hora || '-'})` : (inv.estado || 'Pendiente');
+                
+                tbody.innerHTML += `
+                    <tr class="hover:bg-stone-50/50 transition">
+                        <td class="p-4 font-mono text-xs font-bold">${inv.id || '----'}</td>
+                        <td class="p-4 font-medium text-gray-900">${inv.nombre || 'Sin Nombre'}</td>
+                        <td class="p-4 text-center font-bold text-gray-600">${inv.pases || 0}</td>
+                        <td class="p-4"><span class="bg-gray-100 px-2 py-1 rounded text-xs font-medium text-gray-600">${inv.mesa || 'S/M'}</span></td>
+                        <td class="p-4"><span class="px-2 py-1 rounded-full text-xs font-bold ${badgeClass}">${textoEstado}</span></td>
+                        <td class="p-4 text-center">
+                            <div class="flex justify-center space-x-2">
+                                <button onclick="verPase('${inv.id}')" class="bg-amber-600 hover:bg-amber-700 text-white text-xs px-3 py-1.5 rounded-lg font-bold shadow-sm transition cursor-pointer">🎫 Generar QR</button>
+                                <button onclick="eliminarInvitado('${inv.firebaseKey}')" class="text-red-500 hover:text-red-700 text-sm font-bold px-2 py-1 transition cursor-pointer">&times;</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function agregarInvitado(e) {
+            e.preventDefault();
+            
+            const nombre = document.getElementById('inv-nombre').value.trim();
+            const pases = parseInt(document.getElementById('inv-pases').value) || 1;
+            const mesa = document.getElementById('inv-mesa').value.trim();
+            
+            if(!nombre || !mesa) {
+                alert("Por favor rellena todos los campos.");
+                return;
+            }
+
+            let id;
+            do {
+                id = Math.floor(1000 + Math.random() * 9000).toString();
+            } while(invitados.some(inv => inv.id === id));
+
+            const nuevoInvitado = { id, nombre, pases, mesa, estado: "Pendiente", hora: "-" };
+
+            const btnSubmit = document.getElementById('btn-submit-invitado');
+            if(btnSubmit) btnSubmit.disabled = true;
+
+            fetch(`${FIREBASE_URL}.json`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(nuevoInvitado)
+            })
+            .then(res => {
+                if(!res.ok) throw new Error("Error en respuesta de red");
+                return res.json();
+            })
+            .then(() => {
+                document.getElementById('invitado-form').reset();
+                conectarFirebase(); 
+            })
+            .catch(err => {
+                console.error("Error al registrar:", err);
+                alert("Hubo un problema al guardar en Firebase.");
+            })
+            .finally(() => {
+                if(btnSubmit) btnSubmit.disabled = false;
+            });
+        }
+
+        function eliminarInvitado(firebaseKey) {
+            if(!firebaseKey || firebaseKey === 'undefined') return;
+            if(confirm("¿Seguro que deseas eliminar este invitado de la lista de la nube?")) {
+                fetch(`${FIREBASE_URL}/${firebaseKey}.json`, { method: 'DELETE' })
+                .then(() => {
+                    // Forzar limpieza local instantánea antes de la sincronización remota
+                    invitados = invitados.filter(i => i.firebaseKey !== firebaseKey);
+                    renderizarTabla();
+                    actualizarContadores();
+                });
+            }
+        }
+
+        function actualizarContadores() {
+            const ingresados = invitados.filter(i => i.estado === 'Ingresado').length;
+            document.getElementById('contador-asistencia').innerText = `${ingresados} / ${invitados.length} Presentes`;
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-amber-700', 'text-white');
+                btn.classList.add('text-gray-600', 'hover:bg-gray-100');
+            });
+            document.getElementById(`btn-${tabName}`).classList.add('bg-amber-700', 'text-white');
+            if(tabName !== 'escaner') apagarCamara();
+        }
+
+        function verPase(id) {
+            const inv = invitados.find(i => i.id === id);
+            if(!inv) return;
+
+            document.getElementById('pase-nombre').innerText = inv.nombre || '';
+            document.getElementById('pase-pases').innerText = inv.pases || 0;
+            document.getElementById('pase-mesa').innerText = inv.mesa || '';
+            document.getElementById('pase-id').innerText = `ID ACCESO: ${inv.id || ''}`;
+
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = ""; 
+
+            setTimeout(() => {
+                new QRCode(qrContainer, {
+                    text: inv.id,
+                    width: 160,
+                    height: 160,
+                    colorDark : "#451a03",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            }, 50); 
+
+            document.getElementById('modal-pase').classList.remove('hidden');
+        }
+
+        function cerrarPase() {
+            document.getElementById('modal-pase').classList.add('hidden');
+        }
+
+        function sonarCheck(type) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                if(type === 'success') {
+                    osc.frequency.setValueAtTime(880, ctx.currentTime); 
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.15);
+                } else {
+                    osc.frequency.setValueAtTime(220, ctx.currentTime); 
+                    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.35);
+                }
+            } catch(e) {}
+        }
+
+        function encenderCamara() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert("⚠️ Error de seguridad: El acceso a la cámara requiere conexión HTTPS segura. Si estás en pruebas locales, asegúrate de usar 'localhost'.");
+                return;
+            }
+
+            if (html5QrcodeScanner) apagarCamara();
+            
+            html5QrcodeScanner = new Html5Qrcode("reader");
+            html5QrcodeScanner.start(
+                { facingMode: "environment" }, 
+                { fps: 15, qrbox: { width: 250, height: 250 } },
+                (decodedText) => { procesarEntrada(decodedText); },
+                (errorMessage) => { /* Silenciar logs de frames sin QR */ } 
+            ).catch(err => {
+                console.error(err);
+                alert("No se pudo iniciar la cámara. Verifica los permisos de hardware.");
+            });
+        }
+
+        function apagarCamara() {
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.stop().then(() => { 
+                    html5QrcodeScanner = null; 
+                    document.getElementById('reader').innerHTML = "";
+                }).catch(() => { html5QrcodeScanner = null; });
+            }
+        }
+
+        function procesarEntrada(codigo) {
+            if(!codigo || procesandoAcceso) return; 
+            
+            const trimCodigo = codigo.trim();
+            const pantalla = document.getElementById('resultado-pantalla');
+            const inv = invitados.find(i => i.id === trimCodigo);
+
+            if (!inv) {
+                sonarCheck('error');
+                pantalla.className = "flex-grow flex flex-col items-center justify-center text-center p-4 rounded-xl border-2 border-red-500 bg-red-50 text-red-800 animate-shake";
+                pantalla.innerHTML = `<div class="text-5xl mb-2">❌</div><h3 class="text-xl font-bold">CÓDIGO INVÁLIDO</h3><p class="text-sm mt-1">Este código no está registrado.</p>`;
+                return;
+            }
+
+            if (inv.estado === 'Ingresado') {
+                sonarCheck('error');
+                pantalla.className = "flex-grow flex flex-col items-center justify-center text-center p-4 rounded-xl border-2 border-amber-500 bg-amber-50 text-amber-800 animate-shake";
+                pantalla.innerHTML = `<div class="text-5xl mb-2">⚠️</div><h3 class="text-xl font-bold">ACCESO REPETIDO</h3><p class="text-base font-semibold mt-1">${inv.nombre}</p><p class="text-xs mt-1">Ingresó a las: ${inv.hora || '-'}</p>`;
+                return;
+            }
+
+            // Encendemos el candado anti-bucle
+            procesandoAcceso = true;
+
+            const horaActual = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const actualizarDatos = { estado: "Ingresado", hora: horaActual };
+
+            fetch(`${FIREBASE_URL}/${inv.firebaseKey}.json`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(actualizarDatos)
+            })
+            .then(() => {
+                // Actualización optimista local inmediata para evitar demoras en UI
+                inv.estado = "Ingresado";
+                inv.hora = horaActual;
+                
+                sonarCheck('success');
+                pantalla.className = "flex-grow flex flex-col items-center justify-center text-center p-4 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-800 animate-zoom-in";
+                pantalla.innerHTML = `
+                    <div class="text-5xl mb-2">✅</div>
+                    <h3 class="text-2xl font-black tracking-wide">¡ACCESO AUTORIZADO!</h3>
+                    <p class="text-lg font-bold text-gray-800 mt-2">${inv.nombre}</p>
+                    <div class="my-3 bg-white px-4 py-2 rounded-xl shadow-inner border border-emerald-200">
+                        <p class="text-sm text-gray-600 font-medium">Pases: <span class="font-black text-emerald-700 text-lg">${inv.pases}</span></p>
+                        <p class="text-sm text-gray-600 font-medium">Asignación: <span class="font-black text-amber-700 text-lg">${inv.mesa}</span></p>
+                    </div>
+                `;
+                renderizarTabla();
+                actualizarContadores();
+            })
+            .catch(err => console.error("Error al registrar acceso:", err))
+            .finally(() => {
+                // Liberamos el candado un momento después para permitir el siguiente escaneo
+                setTimeout(() => { procesandoAcceso = false; }, 800);
+            });
+            
+            document.getElementById('codigo-manual').value = ""; 
+        }
+    </script>
+</body>
+</html>
